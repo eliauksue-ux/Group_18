@@ -1,3 +1,14 @@
-
-web/auction/uploads/
+# 忽略整个 uploads
 web/auction/uploads/**
+
+# 放行占位（可选，用来提交空目录）
+!web/auction/uploads/.gitkeep
+
+# 放行 items 子目录
+!web/auction/uploads/items/**
+# 在 items 里，仍只放行图片扩展名（其余例如 .tmp 继续忽略）
+!web/auction/uploads/items/**/*.jpg
+!web/auction/uploads/items/**/*.jpeg
+!web/auction/uploads/items/**/*.png
+!web/auction/uploads/items/**/*.gif
+!web/auction/uploads/items/**/*.webp
