@@ -68,4 +68,11 @@ $bids->execute([$aid]);
   , Final price: £<?= number_format($au['final_price'],2) ?></p>
 <?php endif; ?>
 
+<?php if (current_user() && current_user()['role'] === 'admin'): ?>
+  <form class="form" method="post" action="auction_delete.php" onsubmit="return confirm('Are you sure to delete this auction?');">
+    <input type="hidden" name="auction_id" value="<?= (int)$au['auction_id'] ?>">
+    <button class="btn outline" type="submit">Delete Auction</button>
+  </form>
+<?php endif; ?>
+
 <?php require_once __DIR__.'/includes/footer.php'; ?>

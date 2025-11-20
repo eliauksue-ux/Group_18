@@ -3,12 +3,14 @@ require_once __DIR__.'/includes/header.php';
 require_once __DIR__.'/includes/auth.php';
 require_once __DIR__.'/includes/database.php';
 require_login();
-
+if (current_user()['role'] !== 'seller') {
+  echo "<p>Only sellers can create auctions.</p>";
+  require_once __DIR__.'/includes/footer.php';
+  exit;
+}
 $pdo = get_db();
 $seller = current_user()['user_id'];
 $preselect = (int)($_GET['item_id'] ?? 0);
-
-// 卖家名下、且还没有进行中的拍卖的物品（简单规则：此处允许重复上拍就不限制，演示起见直接列出全部）
 $items = $pdo->prepare("SELECT item_id, title FROM Item WHERE seller_id=? ORDER BY item_id DESC");
 $items->execute([$seller]);
 ?>

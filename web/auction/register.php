@@ -8,7 +8,7 @@
   <label>Password</label>
   <input name="password" type="password" required>
   <label>Role</label>
-  <select name="role">a
+  <select name="role">
     <option value="buyer">buyer</option>
     <option value="seller">seller</option>
   </select>

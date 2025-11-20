@@ -2,6 +2,11 @@
 require_once __DIR__.'/includes/header.php';
 require_once __DIR__.'/includes/auth.php';
 require_login();
+if (current_user()['role'] !== 'seller') {
+  echo "<p>Only sellers can create items.</p>";
+  require_once __DIR__.'/includes/footer.php';
+  exit;
+}
 ?>
 <h2>New Item</h2>
 <form class="form" action="item_create_process.php" method="post" enctype="multipart/form-data">
