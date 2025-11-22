@@ -99,6 +99,16 @@ function wl_format_interval(int $sec): string {
       <div class="card-status <?= $badgeClass ?>">
         <?= htmlspecialchars($badgeText) ?>
       </div>
+      
+
+      <form class="watch-form" method="post" action="watchlist_remove.php"
+      onsubmit="event.stopPropagation();">
+    <input type="hidden" name="auction_id" value="<?= (int)$r['auction_id'] ?>">
+    <button class="watch-btn in" type="submit" onclick="event.stopPropagation();">
+        ★ Remove
+    </button>
+</form>
+
 
       <a class="card-link" href="auction.php?id=<?= (int)$r['auction_id'] ?>">
         <img src="<?= htmlspecialchars($img) ?>" alt="">

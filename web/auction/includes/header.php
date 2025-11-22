@@ -1,5 +1,6 @@
 <?php
-// includes/header.php
+date_default_timezone_set('Europe/London');
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
@@ -17,13 +18,14 @@ $user = current_user();
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+
 <header class="topbar">
   <div>
-    <a href="index.php" class="brand">Auction</a>
-    <a href="index.php">Browse</a>
+    <a href="index.php"><b>Browse</b></a>
 
     <?php if ($user && $user['role'] === 'buyer'): ?>
       <a href="watchlist.php">Watchlist</a>
+      <a href="recommendations.php">Recommendations</a>
     <?php endif; ?>
 
     <?php if ($user && $user['role'] === 'seller'): ?>
@@ -34,13 +36,34 @@ $user = current_user();
   </div>
 
   <div>
-    <?php if ($user): ?>
+  <?php if ($user): ?>
+
+      <?php
+      // 使用外层页面提供的 $pdo
+      if (!isset($pdo)) {
+          require_once __DIR__ . '/database.php';
+          $pdo = get_db();
+      }
+
+      $stmt = $pdo->prepare("SELECT COUNT(*) FROM Notifications WHERE user_id=? AND is_read=0");
+      $stmt->execute([$user['user_id']]);
+      $unread_count = (int)$stmt->fetchColumn();
+      ?>
+
+      <a href="notifications.php" class="notif-link">
+        🔔 Notifications
+        <?php if ($unread_count > 0): ?>
+          <span class="notif-badge"><?= $unread_count ?></span>
+        <?php endif; ?>
+      </a>
+
       <span>Hi, <?= htmlspecialchars($user['username']) ?></span>
       <a href="logout.php">Logout</a>
-    <?php else: ?>
+
+  <?php else: ?>
       <a href="register.php">Register</a>
       <a href="login.php">Login</a>
-    <?php endif; ?>
+  <?php endif; ?>
   </div>
 </header>
 

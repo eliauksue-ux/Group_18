@@ -12,18 +12,8 @@ $keyword = trim($_GET['q'] ?? '');
 $catId   = (int)($_GET['category_id'] ?? 0);
 
 /**
- * 选出每个 item 最新的一场 auction（按 end_date 最大算“最新”），
- * 然后把所有 item 都列出来：
- *  - 有拍卖的：带 start / end / status / current_price
- *  - 没拍卖的：auction 字段为 NULL
- *
- * 排序规则：
- *  1) 正在进行中的拍卖（status='ongoing' 且 now 在 start–end 之间），按结束时间升序
- *  2) 还没开始的拍卖（start_date > now），按开始时间升序
- *  3) 没有拍卖的 item
- *  4) 已经结束的拍卖
+ * 查询 item + 最新 auction
  */
-
 $sql = "
 SELECT
   i.item_id,
@@ -74,20 +64,22 @@ if ($conds) {
   $sql .= " WHERE ".implode(" AND ", $conds);
 }
 
+/**
+ * 排序逻辑：正在进行 → 即将开始 → 无拍卖 → 已结束
+ */
 $sql .= "
 ORDER BY
   CASE
     WHEN la.auction_id IS NOT NULL
-         AND la.status = 'ongoing'
          AND la.start_date <= NOW()
          AND la.end_date   >  NOW()
-      THEN 0              -- 正在进行
+      THEN 0
     WHEN la.auction_id IS NOT NULL
          AND la.start_date > NOW()
-      THEN 1              -- 未来将开始
+      THEN 1
     WHEN la.auction_id IS NULL
-      THEN 2              -- 还没有创建拍卖的 item
-    ELSE 3                -- 已经结束的拍卖
+      THEN 2
+    ELSE 3
   END,
   la.end_date IS NULL,
   la.end_date ASC,
@@ -99,7 +91,7 @@ $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 /**
- * 把秒数格式化成 “Xd HH:MM” / “HH:MM”
+ * 格式化时间间隔
  */
 function format_interval(int $sec): string {
   if ($sec < 0) $sec = 0;
@@ -119,7 +111,7 @@ $cats = $pdo->query("SELECT category_id, category_name FROM Category ORDER BY ca
 $now  = time();
 $user = current_user();
 
-// 当前 buyer 的 watchlist（只取 auction_id 列表）
+// 当前 buyer 的 watchlist
 $watchIds = [];
 if ($user && $user['role'] === 'buyer') {
   $w = $pdo->prepare("SELECT auction_id FROM Watchlist WHERE user_id=?");
@@ -127,6 +119,30 @@ if ($user && $user['role'] === 'buyer') {
   $watchIds = array_column($w->fetchAll(), 'auction_id');
 }
 ?>
+
+<style>
+.card .title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.card .price {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.card .meta {
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.4;
+}
+
+.card .meta b {
+    color: #333;
+}
+</style>
 
 <h2>All items & auctions</h2>
 
@@ -161,7 +177,7 @@ if ($user && $user['role'] === 'buyer') {
       $startTs = $r['start_date'] ? strtotime($r['start_date']) : null;
       $endTs   = $r['end_date']   ? strtotime($r['end_date'])   : null;
 
-      // 统一逻辑状态：upcoming / ongoing / completed
+      // 状态逻辑
       $displayStatus = 'upcoming';
       $badgeClass    = 'status-noauction';
       $badgeText     = 'No auction';
@@ -201,27 +217,62 @@ if ($user && $user['role'] === 'buyer') {
       </div>
 
       <a class="card-link" <?= $hasAuction ? 'href="auction.php?id='.(int)$r['auction_id'].'"' : '' ?>>
-        <img src="<?= htmlspecialchars($img) ?>" alt="">
+  
+  <!-- 图片 -->
+  <img src="<?= htmlspecialchars($img) ?>" alt="">
 
-        <div class="p">
-          <div class="title"><?= htmlspecialchars($r['title']) ?></div>
-          <div class="price"><?= $priceLabel ?></div>
-          <div>Status: <?= htmlspecialchars($displayStatus) ?></div>
-          <div>Starts: <?= htmlspecialchars($startsLabel) ?></div>
-          <div>Ends: <?= htmlspecialchars($endsLabel) ?></div>
-        </div>
-      </a>
+  <div class="p">
 
+    <!-- 大号标题 -->
+    <div class="title"><?= htmlspecialchars($r['title']) ?></div>
+
+    <!-- 粗体价格 -->
+    <div class="price">
+      <?= $priceLabel ?>
+    </div>
+
+    <!-- 状态 + 时间 -->
+    <div class="meta">
+      <b>Status:</b> <?= htmlspecialchars($displayStatus) ?><br>
+
+      <?php
+        $startPretty = $r['start_date'] 
+                        ? date("M j, Y H:i", strtotime($r['start_date']))
+                        : "—";
+
+        $endPretty = $r['end_date'] 
+                        ? date("M j, Y H:i", strtotime($r['end_date']))
+                        : "—";
+      ?>
+
+      <b>Starts:</b> <?= $startPretty ?><br>
+      <b>Ends:</b> <?= $endPretty ?>
+    </div>
+
+  </div>
+</a>
+
+      <!-- ⭐ Watchlist 按钮：添加 + 移除 -->
       <?php if ($user && $user['role'] === 'buyer' && $hasAuction): ?>
-        <form class="watch-form" method="post" action="watchlist_add.php"
-              onsubmit="event.stopPropagation();">
-          <input type="hidden" name="auction_id" value="<?= (int)$r['auction_id'] ?>">
-          <button class="watch-btn <?= $inWatchlist ? 'in' : '' ?>"
-                  type="submit"
-                  onclick="event.stopPropagation();">
-            <?= $inWatchlist ? '★ In watchlist' : '☆ Add to watchlist' ?>
-          </button>
-        </form>
+        <?php if ($inWatchlist): ?>
+          <!-- 移除 -->
+          <form class="watch-form" method="post" action="watchlist_remove.php"
+                onsubmit="event.stopPropagation();">
+            <input type="hidden" name="auction_id" value="<?= (int)$r['auction_id'] ?>">
+            <button class="watch-btn in" type="submit" onclick="event.stopPropagation();">
+              ★ Remove
+            </button>
+          </form>
+        <?php else: ?>
+          <!-- 添加 -->
+          <form class="watch-form" method="post" action="watchlist_add.php"
+                onsubmit="event.stopPropagation();">
+            <input type="hidden" name="auction_id" value="<?= (int)$r['auction_id'] ?>">
+            <button class="watch-btn" type="submit" onclick="event.stopPropagation();">
+              ☆ Add to watchlist
+            </button>
+          </form>
+        <?php endif; ?>
       <?php endif; ?>
     </div>
 
