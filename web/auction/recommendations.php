@@ -168,7 +168,7 @@ function pretty_time($t) {
     <div class="card">
 
         <a class="card-link" href=" >">
-            < img src="<?= htmlspecialchars($img) ?>" alt="">
+            <img src="<?= htmlspecialchars($img) ?>" alt="">
 
             <div class="p">
                 <div class="title"><?= htmlspecialchars($r['title']) ?></div>

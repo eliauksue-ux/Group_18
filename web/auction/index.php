@@ -6,10 +6,12 @@ require_once __DIR__.'/includes/auth.php';
 $pdo = get_db();
 
 /**
- * 读取 GET 参数：搜索关键字 & 分类
+ * 读取 GET 参数：搜索关键字 & 分类 & 排序方式
  */
 $keyword = trim($_GET['q'] ?? '');
 $catId   = (int)($_GET['category_id'] ?? 0);
+$sort    = $_GET['sort'] ?? 'default';
+$sort    = in_array($sort, ['price_desc', 'price_asc'], true) ? $sort : 'default';
 
 /**
  * 查询 item + 最新 auction
@@ -65,26 +67,45 @@ if ($conds) {
 }
 
 /**
- * 排序逻辑：正在进行 → 即将开始 → 无拍卖 → 已结束
+ * 排序逻辑：
+ *  - default：和你原来一样，按状态（正在进行/未开始/无拍卖/已结束）+ 时间排序
+ *  - price_desc：按 current_price 从高到低
+ *  - price_asc：按 current_price 从低到高
  */
-$sql .= "
-ORDER BY
-  CASE
-    WHEN la.auction_id IS NOT NULL
-         AND la.start_date <= NOW()
-         AND la.end_date   >  NOW()
-      THEN 0
-    WHEN la.auction_id IS NOT NULL
-         AND la.start_date > NOW()
-      THEN 1
-    WHEN la.auction_id IS NULL
-      THEN 2
-    ELSE 3
-  END,
-  la.end_date IS NULL,
-  la.end_date ASC,
-  i.item_id ASC
-";
+if ($sort === 'price_desc') {
+  $sql .= "
+  ORDER BY
+    la.current_price IS NULL,       -- 没有价格的排在最后
+    la.current_price DESC,
+    i.item_id ASC
+  ";
+} elseif ($sort === 'price_asc') {
+  $sql .= "
+  ORDER BY
+    la.current_price IS NULL,
+    la.current_price ASC,
+    i.item_id ASC
+  ";
+} else {
+  $sql .= "
+  ORDER BY
+    CASE
+      WHEN la.auction_id IS NOT NULL
+           AND la.start_date <= NOW()
+           AND la.end_date   >  NOW()
+        THEN 0
+      WHEN la.auction_id IS NOT NULL
+           AND la.start_date > NOW()
+        THEN 1
+      WHEN la.auction_id IS NULL
+        THEN 2
+      ELSE 3
+    END,
+    la.end_date IS NULL,
+    la.end_date ASC,
+    i.item_id ASC
+  ";
+}
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -146,7 +167,7 @@ if ($user && $user['role'] === 'buyer') {
 
 <h2>All items & auctions</h2>
 
-<!-- 搜索 + 分类过滤 -->
+<!-- 搜索 + 分类过滤 + 排序 -->
 <form class="search-bar" method="get" action="index.php">
   <input
     type="text"
@@ -165,6 +186,19 @@ if ($user && $user['role'] === 'buyer') {
       </option>
     <?php endforeach; ?>
   </select>
+
+  <select name="sort" aria-label="Sort items">
+    <option value="default" <?= $sort === 'default' ? 'selected' : '' ?>>
+      Sort by time (default)
+    </option>
+    <option value="price_desc" <?= $sort === 'price_desc' ? 'selected' : '' ?>>
+      Price: high to low
+    </option>
+    <option value="price_asc" <?= $sort === 'price_asc' ? 'selected' : '' ?>>
+      Price: low to high
+    </option>
+  </select>
+
   <button class="btn" type="submit">Search</button>
 </form>
 
@@ -217,42 +251,43 @@ if ($user && $user['role'] === 'buyer') {
       </div>
 
       <a class="card-link" <?= $hasAuction ? 'href="auction.php?id='.(int)$r['auction_id'].'"' : '' ?>>
-  
-  <!-- 图片 -->
-  <img src="<?= htmlspecialchars($img) ?>" alt="">
 
-  <div class="p">
+        <!-- 图片 -->
+        <img src="<?= htmlspecialchars($img) ?>" alt="">
 
-    <!-- 大号标题 -->
-    <div class="title"><?= htmlspecialchars($r['title']) ?></div>
+        <div class="p">
 
-    <!-- 粗体价格 -->
-    <div class="price">
-      <?= $priceLabel ?>
-    </div>
+          <!-- 大号标题 -->
+          <div class="title"><?= htmlspecialchars($r['title']) ?></div>
 
-    <!-- 状态 + 时间 -->
-    <div class="meta">
-      <b>Status:</b> <?= htmlspecialchars($displayStatus) ?><br>
+          <!-- 粗体价格 -->
+          <div class="price">
+            <?= $priceLabel ?>
+          </div>
 
-      <?php
-        $startPretty = $r['start_date'] 
-                        ? date("M j, Y H:i", strtotime($r['start_date']))
-                        : "—";
+          <!-- 状态 + 时间 -->
+          <div class="meta">
+            <b>Status:</b> <?= htmlspecialchars($displayStatus) ?><br>
 
-        $endPretty = $r['end_date'] 
-                        ? date("M j, Y H:i", strtotime($r['end_date']))
-                        : "—";
-      ?>
+            <?php
+              $startPretty = $r['start_date']
+                              ? date("M j, Y H:i", strtotime($r['start_date']))
+                              : "—";
 
-      <b>Starts:</b> <?= $startPretty ?><br>
-      <b>Ends:</b> <?= $endPretty ?>
-    </div>
+              $endPretty = $r['end_date']
+                              ? date("M j, Y H:i", strtotime($r['end_date']))
+                              : "—";
+            ?>
 
-  </div>
-</a>
+            <b>Starts:</b> <?= $startPretty ?><br>
+            <b>Ends:</b> <?= $endPretty ?>
+          </div>
 
-      <!-- ⭐ Watchlist 按钮：添加 + 移除 -->
+        </div>
+      </a>
+
+
+            <!-- ⭐ Watchlist 按钮：添加 + 移除（只给 buyer 看） -->
       <?php if ($user && $user['role'] === 'buyer' && $hasAuction): ?>
         <?php if ($inWatchlist): ?>
           <!-- 移除 -->
@@ -274,7 +309,23 @@ if ($user && $user['role'] === 'buyer') {
           </form>
         <?php endif; ?>
       <?php endif; ?>
+
+      <!-- 🔴 只有 admin 才能看到的删除按钮：现在是删“整件商品 + 所有相关拍卖” -->
+      <?php if ($user && $user['role'] === 'admin'): ?>
+        <form class="admin-delete-form"
+              method="post"
+              action="item_delete.php"
+              onsubmit="event.stopPropagation(); return confirm('Delete this item and all its auctions permanently?');">
+          <input type="hidden" name="item_id" value="<?= (int)$r['item_id'] ?>">
+          <button class="btn outline" type="submit">
+            Delete item
+          </button>
+        </form>
+      <?php endif; ?>
+
+      
     </div>
+
 
   <?php endforeach; ?>
 </div>
