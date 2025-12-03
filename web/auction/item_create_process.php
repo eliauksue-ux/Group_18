@@ -22,7 +22,7 @@ try {
   $stmt->execute([$title,$desc,current_user()['user_id'],$sp,$rp,$cat_id]);
   $item_id = (int)$pdo->lastInsertId();
 
-  // 图片上传
+  // Upload images
   $uploadDir = __DIR__."/uploads/items/$item_id";
   if (!is_dir($uploadDir)) mkdir($uploadDir, 0775, true);
   $finfo = new finfo(FILEINFO_MIME_TYPE);

@@ -3,7 +3,7 @@ require_once __DIR__.'/includes/header.php';
 require_once __DIR__.'/includes/database.php';
 require_once __DIR__.'/includes/auth.php';
 
-require_login(); // 只有 buyer 可以访问推荐
+require_login(); // Only buyer can access recommendations
 $user = current_user();
 if ($user['role'] !== 'buyer') {
     echo "<p>You must be a buyer to see recommendations.</p >";
@@ -13,9 +13,7 @@ if ($user['role'] !== 'buyer') {
 
 $pdo = get_db();
 
-/* ===========================================================
-   STEP 1: 获取当前用户的 watchlist
-   =========================================================== */
+/* STEP 1: Get the watchlist of the current user */
 $w = $pdo->prepare("
     SELECT A.auction_id, I.category_id
     FROM Watchlist W
@@ -26,13 +24,11 @@ $w = $pdo->prepare("
 $w->execute([$user['user_id']]);
 $wl = $w->fetchAll();
 
-/* ===========================================================
-   STEP 2: 如果 watchlist 不为空 → 找最多的 category
-   =========================================================== */
+/* STEP 2: If watchlist is not empty → find the most categories */
 $targetCategory = null;
 if (!empty($wl)) {
 
-    // 统计出现最多的 category
+    // Count the categories with the most occurrences
     $count = [];
     foreach ($wl as $row) {
         $cat = (int)$row['category_id'];
@@ -40,16 +36,14 @@ if (!empty($wl)) {
         $count[$cat]++;
     }
 
-    // 按出现次数排序
+    // Sort by occurrence
     arsort($count);
     $targetCategory = array_key_first($count);
 }
 
-/* ===========================================================
-   STEP 3: 构造推荐查询
-   =========================================================== */
+/* STEP 3: Construct recommended query */
 
-/* Case 1: watchlist 不为空 → 推荐同分类的 upcoming/ongoing */
+/* Case 1: Watchlist is not empty → recommending the same category of ascending/ongoing */
 if ($targetCategory !== null) {
 
     $sql = "
@@ -76,7 +70,7 @@ if ($targetCategory !== null) {
 
 }
 
-/* Case 2: 如果 watchlist 为空 → 推荐 Ongoing + Upcoming */
+/* Case 2: If the watchlist is empty → recommend going + rising */
 else {
 
     $sql = "
@@ -96,20 +90,19 @@ else {
     $recs = $pdo->query($sql)->fetchAll();
 }
 
-/* 当前用户 watchlist ID，用于按钮状态 */
 $watchIdsStmt = $pdo->prepare("SELECT auction_id FROM Watchlist WHERE user_id=?");
 $watchIdsStmt->execute([$user['user_id']]);
 $watchIds = array_column($watchIdsStmt->fetchAll(), 'auction_id');
 
 $now = time();
 
-/* 时间格式函数 */
+/* Time format function */
 function pretty_time($t) {
     return date("M j, Y H:i", strtotime($t));
 }
 ?>
 
-<!-- ===== 页面标题 ===== -->
+<!-- ===== Page title ===== -->
 <h2>Recommended for you</h2>
 
 <?php if (empty($recs)): ?>
@@ -157,7 +150,7 @@ function pretty_time($t) {
     $startTs = strtotime($r['start_date']);
     $endTs   = strtotime($r['end_date']);
 
-    // 状态只取 upcoming & ongoing（SQL 已过滤）
+    // Status is only taken as updating and ongoing (SQL filtered)
     $displayStatus = ($now < $startTs) ? 'upcoming' : 'ongoing';
 
     $priceLabel = '£'.number_format($r['current_price'],2);
@@ -182,7 +175,7 @@ function pretty_time($t) {
             </div>
         </a >
 
-        <!-- Watchlist 按钮 -->
+        <!-- Watchlist button -->
         <?php if ($inWatchlist): ?>
             <form class="watch-form" method="post" action="watchlist_remove.php"
                   onsubmit="event.stopPropagation();">

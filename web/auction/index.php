@@ -5,17 +5,13 @@ require_once __DIR__.'/includes/auth.php';
 
 $pdo = get_db();
 
-/**
- * 读取 GET 参数：搜索关键字 & 分类 & 排序方式
- */
+/* Read get parameters: search keywords and Classification&sorting method */
 $keyword = trim($_GET['q'] ?? '');
 $catId   = (int)($_GET['category_id'] ?? 0);
 $sort    = $_GET['sort'] ?? 'default';
 $sort    = in_array($sort, ['price_desc', 'price_asc'], true) ? $sort : 'default';
 
-/**
- * 查询 item + 最新 auction
- */
+/* Query item and latest auction */
 $sql = "
 SELECT
   i.item_id,
@@ -50,13 +46,13 @@ LEFT JOIN (
 $params = [];
 $conds  = [];
 
-// 按标题搜索
+// Search by title
 if ($keyword !== '') {
   $conds[]  = "i.title LIKE ?";
   $params[] = '%'.$keyword.'%';
 }
 
-// 按分类过滤
+// Filter by category
 if ($catId > 0) {
   $conds[]  = "i.category_id = ?";
   $params[] = $catId;
@@ -67,15 +63,15 @@ if ($conds) {
 }
 
 /**
- * 排序逻辑：
- *  - default：和你原来一样，按状态（正在进行/未开始/无拍卖/已结束）+ 时间排序
- *  - price_desc：按 current_price 从高到低
- *  - price_asc：按 current_price 从低到高
+ * Sorting logic：
+ *  - default：sort by status (in progress/not started/no auction/closed)+time
+ *  - price_desc：from high to low according to current_price 
+ *  - price_asc：from low to high according to current_price 
  */
 if ($sort === 'price_desc') {
   $sql .= "
   ORDER BY
-    la.current_price IS NULL,       -- 没有价格的排在最后
+    la.current_price IS NULL,     
     la.current_price DESC,
     i.item_id ASC
   ";
@@ -111,9 +107,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
-/**
- * 格式化时间间隔
- */
+/* Format interval */
 function format_interval(int $sec): string {
   if ($sec < 0) $sec = 0;
   $d = intdiv($sec, 86400); $sec %= 86400;
@@ -125,14 +119,14 @@ function format_interval(int $sec): string {
   return sprintf('%02dh %02dm', $h, $m);
 }
 
-// 分类下拉菜单
+// Category drop-down menu
 $cats = $pdo->query("SELECT category_id, category_name FROM Category ORDER BY category_name")
             ->fetchAll();
 
 $now  = time();
 $user = current_user();
 
-// 当前 buyer 的 watchlist
+// Watchlist of current buyer
 $watchIds = [];
 if ($user && $user['role'] === 'buyer') {
   $w = $pdo->prepare("SELECT auction_id FROM Watchlist WHERE user_id=?");
@@ -167,7 +161,7 @@ if ($user && $user['role'] === 'buyer') {
 
 <h2>All items & auctions</h2>
 
-<!-- 搜索 + 分类过滤 + 排序 -->
+<!-- Search, sort filter and sort -->
 <form class="search-bar" method="get" action="index.php">
   <input
     type="text"
@@ -252,20 +246,20 @@ if ($user && $user['role'] === 'buyer') {
 
       <a class="card-link" <?= $hasAuction ? 'href="auction.php?id='.(int)$r['auction_id'].'"' : '' ?>>
 
-        <!-- 图片 -->
+        <!-- image -->
         <img src="<?= htmlspecialchars($img) ?>" alt="">
 
         <div class="p">
 
-          <!-- 大号标题 -->
+          <!-- Large title -->
           <div class="title"><?= htmlspecialchars($r['title']) ?></div>
 
-          <!-- 粗体价格 -->
+          <!-- Bold price -->
           <div class="price">
             <?= $priceLabel ?>
           </div>
 
-          <!-- 状态 + 时间 -->
+          <!-- Status and time -->
           <div class="meta">
             <b>Status:</b> <?= htmlspecialchars($displayStatus) ?><br>
 
@@ -287,10 +281,10 @@ if ($user && $user['role'] === 'buyer') {
       </a>
 
 
-            <!-- ⭐ Watchlist 按钮：添加 + 移除（只给 buyer 看） -->
+            <!-- ⭐ Watchlist: add and remove (for buyer only) -->
       <?php if ($user && $user['role'] === 'buyer' && $hasAuction): ?>
         <?php if ($inWatchlist): ?>
-          <!-- 移除 -->
+          <!-- Remove -->
           <form class="watch-form" method="post" action="watchlist_remove.php"
                 onsubmit="event.stopPropagation();">
             <input type="hidden" name="auction_id" value="<?= (int)$r['auction_id'] ?>">
@@ -299,7 +293,7 @@ if ($user && $user['role'] === 'buyer') {
             </button>
           </form>
         <?php else: ?>
-          <!-- 添加 -->
+          <!-- Add -->
           <form class="watch-form" method="post" action="watchlist_add.php"
                 onsubmit="event.stopPropagation();">
             <input type="hidden" name="auction_id" value="<?= (int)$r['auction_id'] ?>">
@@ -310,7 +304,7 @@ if ($user && $user['role'] === 'buyer') {
         <?php endif; ?>
       <?php endif; ?>
 
-      <!-- 🔴 只有 admin 才能看到的删除按钮：现在是删“整件商品 + 所有相关拍卖” -->
+      <!-- Delete button visible only to admin -->
       <?php if ($user && $user['role'] === 'admin'): ?>
         <form class="admin-delete-form"
               method="post"

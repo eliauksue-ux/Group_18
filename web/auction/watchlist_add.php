@@ -22,7 +22,7 @@ if ($aid <= 0) {
 $pdo = get_db();
 
 try {
-  // 只在不存在时插入，避免重复
+  // Insert only when it does not exist to avoid duplication
   $stmt = $pdo->prepare("
     INSERT INTO Watchlist(user_id, auction_id, created_at)
     SELECT ?, ?, NOW()
@@ -37,6 +37,6 @@ try {
   flash_set('error', 'Failed to update watchlist: '.$e->getMessage());
 }
 
-// 回到来源页（如果没有就回首页）
+// Go back to the source page (if not, go back to the first page)
 $ref = $_SERVER['HTTP_REFERER'] ?? 'index.php';
 header('Location: '.$ref);

@@ -13,7 +13,7 @@ $row = $stmt->fetch();
 
 $ok = false;
 if ($row) {
-  // 兼容：如果存的是哈希就 verify；如果是明文就直接比对
+  // Compatible: verify if hash is saved; If it is clear text, compare it directly
   $ok = password_verify($pass, $row['password']) || $pass === $row['password'];
 }
 if (!$ok) {

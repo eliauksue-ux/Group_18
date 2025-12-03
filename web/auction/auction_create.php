@@ -14,16 +14,7 @@ $pdo    = get_db();
 $seller = current_user()['user_id'];
 $preselect = (int)($_GET['item_id'] ?? 0);
 
-/**
- * 只选出「当前没有正在进行 / 即将开始的拍卖」的 item
- *
- * 条件解释：
- *  - i.seller_id = ?                      只看当前 seller 的物品
- *  - NOT EXISTS 子查询：
- *        对于某个 item，如果存在 Auction 记录，且 end_date > NOW()
- *        说明这个 item 现在有一个拍卖还没结束（可能未开始或正在进行），
- *        这种 item 就不再允许出现在 New Auction 的下拉框里。
- */
+/* Only items with "no auction in progress/about to start" are selected */
 $sql = "
   SELECT i.item_id, i.title
   FROM Item i

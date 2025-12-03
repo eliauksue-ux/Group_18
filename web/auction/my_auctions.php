@@ -13,7 +13,7 @@ if ($user['role'] !== 'seller') {
 
 $pdo = get_db();
 
-// 取出该 seller 的所有拍卖，连同 item 信息 + 封面图
+// Take out all auctions of the seller, together with item information and cover image
 $sql = "
 SELECT
   a.auction_id,
@@ -57,10 +57,9 @@ $now = time();
 
     $hasStarted  = $startTs !== false && $now >= $startTs;
     $hasEnded    = $endTs   !== false && $now >= $endTs;
-    $canEditTime  = !$hasEnded;   // 已经结束的就不让改时间了
-    $canEditPrice = !$hasStarted; // 还没开始才允许改价格
+    $canEditTime  = !$hasEnded;   
+    $canEditPrice = !$hasStarted; 
 
-    // 统一逻辑状态：upcoming / ongoing / completed
     $displayStatus = 'upcoming';
     if ($startTs !== false && $endTs !== false) {
       if ($now < $startTs) {
@@ -80,7 +79,7 @@ $now = time();
   <form class="form" method="post" action="my_auctions_update.php">
     <input type="hidden" name="auction_id" value="<?= (int)$r['auction_id'] ?>">
 
-    <!-- 缩略图 -->
+    <!-- Thumbnail -->
     <img src="<?= htmlspecialchars($img) ?>" alt="" class="my-auction-thumb">
 
     <h3>
@@ -93,7 +92,7 @@ $now = time();
       Current price: £<?= number_format($r['current_price'], 2) ?>
     </p>
 
-    <!-- 拍卖时间 -->
+    <!-- Auction time -->
     <label>Start time</label>
     <input
       type="datetime-local"
@@ -116,7 +115,7 @@ $now = time();
       <p><i>This auction has ended, time cannot be changed.</i></p>
     <?php endif; ?>
 
-    <!-- 价格设置：只有还没开始的拍卖可以改 -->
+    <!-- Price setting: only auctions that have not yet started can be changed -->
     <label>Start price</label>
     <input
       type="number"

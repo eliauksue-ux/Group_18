@@ -37,7 +37,7 @@ $now = time();
 try {
   $pdo->beginTransaction();
 
-  // 锁住这条 auction 和对应 item
+  // Lock the auction and the corresponding item
   $stmt = $pdo->prepare("
     SELECT a.*, i.seller_id, i.start_price, i.reserve_price
     FROM Auction a
@@ -61,7 +61,7 @@ try {
   $hasStarted = $oldStartTs !== false && $now >= $oldStartTs;
   $hasEnded   = $oldEndTs !== false && $now >= $oldEndTs;
 
-  // 1) 更新拍卖时间：只要没结束就允许
+  // 1) Update auction time: allowed as long as it is not over
   if ($hasEnded) {
     throw new RuntimeException('This auction has ended. Time cannot be changed.');
   }
@@ -69,7 +69,7 @@ try {
   $updA = $pdo->prepare("UPDATE Auction SET start_date = ?, end_date = ? WHERE auction_id = ?");
   $updA->execute([$start, $end, $aid]);
 
-  // 2) 更新价格：只有“还没开始”的拍卖可以改
+  // 2) Update price: only "not started" auctions can be changed
   if (!$hasStarted) {
     $sp = (float)$spRaw;
     $rp = (float)$rpRaw;

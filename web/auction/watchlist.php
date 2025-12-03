@@ -43,7 +43,7 @@ $rows = $stmt->fetchAll();
 
 $now = time();
 
-/* 与首页同样的倒计时格式函数 */
+/* The same countdown format function as the home page */
 function wl_format_interval(int $sec): string {
   if ($sec < 0) $sec = 0;
   $d = intdiv($sec, 86400); $sec %= 86400;

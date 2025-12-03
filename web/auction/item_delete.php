@@ -1,5 +1,5 @@
 <?php
-// item_delete.php
+
 require_once __DIR__ . '/includes/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/flash.php';
@@ -26,7 +26,7 @@ $images = [];
 try {
     $pdo->beginTransaction();
 
-    // 1) 找到这个 item 关联的所有 auction
+    // 1) Find all the auctions associated with this item
     $stmt = $pdo->prepare("SELECT auction_id FROM Auction WHERE item_id = ?");
     $stmt->execute([$itemId]);
     $auctionIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -34,28 +34,28 @@ try {
     if ($auctionIds) {
         $placeholders = implode(',', array_fill(0, count($auctionIds), '?'));
 
-        // 1.1 删除这些 auction 的出价
+        // 1.1 Delete bids for these auctions
         $delBids = $pdo->prepare("DELETE FROM Bid WHERE auction_id IN ($placeholders)");
         $delBids->execute($auctionIds);
 
-        // 1.2 删除 watchlist 中的对应记录
+        // 1.2 Delete the corresponding record in the watchlist
         $delWatch = $pdo->prepare("DELETE FROM Watchlist WHERE auction_id IN ($placeholders)");
         $delWatch->execute($auctionIds);
 
-        // 1.3 删除 auction 本身
+        // 1.3 Delete the auction
         $delAuctions = $pdo->prepare("DELETE FROM Auction WHERE auction_id IN ($placeholders)");
         $delAuctions->execute($auctionIds);
     }
 
-    // 2) 先把图片路径取出来
+    // 2) Take out the image path first
     $stmtImg = $pdo->prepare("SELECT image_url FROM ItemImage WHERE item_id = ?");
     $stmtImg->execute([$itemId]);
     $images = $stmtImg->fetchAll(PDO::FETCH_COLUMN);
 
-    // 2.1 删掉 ItemImage 记录
+    // 2.1 Delete Itemimage record
     $pdo->prepare("DELETE FROM ItemImage WHERE item_id = ?")->execute([$itemId]);
 
-    // 3) 删除 Item 记录
+    // 3) Delete Item record
     $pdo->prepare("DELETE FROM Item WHERE item_id = ?")->execute([$itemId]);
 
     $pdo->commit();
@@ -70,7 +70,6 @@ try {
     exit;
 }
 
-// 4) 数据库已经删掉，这里再尝试删除文件本身（不会影响事务）
 if (!empty($images)) {
     foreach ($images as $relPath) {
         if (!$relPath) continue;
@@ -81,6 +80,6 @@ if (!empty($images)) {
     }
 }
 
-// 删除完成后统一回到首页
+// Return to the home page after deletion
 header('Location: index.php');
 exit;

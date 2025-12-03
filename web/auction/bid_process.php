@@ -2,7 +2,7 @@
 require_once __DIR__.'/includes/database.php';
 require_once __DIR__.'/includes/auth.php';
 require_once __DIR__.'/includes/flash.php';
-require_once __DIR__.'/includes/send_mail.php';   // ← 使用站内通知
+require_once __DIR__.'/includes/send_mail.php';   // use station notification
 require_login();
 
 if (current_user()['role'] !== 'buyer') {
@@ -19,7 +19,7 @@ $pdo = get_db();
 try {
     $pdo->beginTransaction();
 
-    // 获取拍卖状态、当前价格、卖家信息
+    // Get auction status, current price and seller information
     $stmt = $pdo->prepare("
         SELECT a.auction_id, a.item_id, a.current_price, a.start_date, a.end_date, a.status,
                i.seller_id, i.title
@@ -33,7 +33,7 @@ try {
 
     if (!$row) throw new RuntimeException('Auction not found');
 
-    // 统一处理大小写
+    // Unified case handling
     $status = strtolower($row['status']);
 
     if ($status !== 'ongoing') throw new RuntimeException('Auction not open');
@@ -43,13 +43,13 @@ try {
 
     $itemTitle = $row['title'];
 
-    // 插入此次出价
+    // Insert a bid at this time
     $pdo->prepare("
         INSERT INTO Bid(auction_id, bidder_id, bid_amount, bid_time)
         VALUES (?, ?, ?, NOW())
     ")->execute([$aid, current_user()['user_id'], $amount]);
 
-    // 更新 auction 当前价格 = 最高出价
+    // Update auction current price = highest bid
     $pdo->prepare("
         UPDATE Auction a
         JOIN (
@@ -62,11 +62,11 @@ try {
     ")->execute([$aid, $aid]);
 
 
-    /*-----------------------------------------
-      发送通知（站内 Notification）
-    ------------------------------------------*/
+    /*!!!!
+      Send notification (station notification)
+                                        !!!!*/
 
-    // 1. 找上一位最高出价者（用于 outbid）
+    // 1. Find the previous highest bidder (for outbid)
     $prevStmt = $pdo->prepare("
         SELECT b.bidder_id
         FROM Bid b
@@ -79,13 +79,13 @@ try {
 
     if ($prev) {
         send_mail(
-            $prev['bidder_id'],                  // ← 用户 ID
+            $prev['bidder_id'],                  
             "You were outbid",
             "Another buyer placed a higher bid (£$amount) on '$itemTitle'."
         );
     }
 
-    // 2. 通知 watchlist 用户
+    // 2. Notify watchlist users
     $watchStmt = $pdo->prepare("
         SELECT user_id
         FROM Watchlist
@@ -102,7 +102,7 @@ try {
         );
     }
 
-    // 3. 通知卖家
+    // 3. Notify seller
     send_mail(
         $row['seller_id'],
         "Your auction received a bid",

@@ -7,15 +7,11 @@ require_login();
 $pdo = get_db();
 $userId = current_user()['user_id'];
 
-/* ============================
-   🟢 STEP 1：把所有通知标记为已读
-   ============================ */
+/* STEP 1：Mark all notifications as read */
 $pdo->prepare("UPDATE Notifications SET is_read = 1 WHERE user_id = ?")
     ->execute([$userId]);
 
-/* ============================
-   🟢 STEP 2：取出所有通知（已读/未读皆可）
-   ============================ */
+/* STEP 2：Retrieve all notifications (read/unread) */
 $stmt = $pdo->prepare("
     SELECT message_id, message, created_at
     FROM Notifications

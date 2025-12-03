@@ -12,7 +12,7 @@ if (!$item_id || !$start || !$end) { flash_set('error','Missing fields'); header
 
 $pdo = get_db();
 try {
-  // 初始 current_price 设为该 Item 的 start_price
+  // The initial current_price is set to the start_price of the item
   $stmt = $pdo->prepare("INSERT INTO Auction(item_id,start_date,end_date,winner_id,final_price,current_price,status)
                          SELECT i.item_id, ?, ?, NULL, NULL, i.start_price, 'ongoing'
                          FROM Item i WHERE i.item_id=? LIMIT 1");

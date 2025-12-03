@@ -15,7 +15,7 @@ if (!$email || !$username || !$pass_raw) {
 $pdo = get_db();
 try {
   $stmt = $pdo->prepare("INSERT INTO Users(email, username, password, role) VALUES (?,?,?,?)");
-  // 存哈希（你现有测试账号还是明文，互不影响）
+  // Save hash
   $stmt->execute([$email, $username, password_hash($pass_raw, PASSWORD_DEFAULT), $role]);
   flash_set('ok','Registered. Please login.');
   header('Location: login.php'); exit;

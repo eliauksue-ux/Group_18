@@ -1,5 +1,5 @@
 <?php
-// includes/flash.php
+
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 function flash_set(string $type, string $msg): void {

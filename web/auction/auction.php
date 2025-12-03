@@ -14,7 +14,7 @@ if ($aid <= 0) {
     exit;
 }
 
-// 取拍卖 + 物品 + 卖家信息 + 主图
+// Take auction, items, seller information and main map
 $sql = "
 SELECT
   a.auction_id,
@@ -50,7 +50,7 @@ if (!$au) {
     exit;
 }
 
-// 计算状态（基于时间）
+// Calculation status (time based)
 $now     = time();
 $startTs = $au['start_date'] ? strtotime($au['start_date']) : null;
 $endTs   = $au['end_date']   ? strtotime($au['end_date'])   : null;
@@ -85,7 +85,7 @@ if ($startTs && $endTs) {
     }
 }
 
-// 读取出价列表（最高价在上）
+// Read the bid list (the highest price is above)
 $bStmt = $pdo->prepare("
     SELECT b.bid_amount, b.bid_time, u.username
     FROM Bid b
@@ -109,7 +109,6 @@ $endPretty   = $au['end_date']   ? date("M j, Y H:i", strtotime($au['end_date'])
   <img class="main" src="<?= htmlspecialchars($mainImage) ?>" alt="">
 </div>
 
-<!-- 紧贴图片下方的状态徽章 -->
 <div class="detail-status">
   <span class="detail-status-chip <?= htmlspecialchars($statusKey) ?>">
     <?= htmlspecialchars($statusShort) ?>
@@ -161,7 +160,8 @@ $endPretty   = $au['end_date']   ? date("M j, Y H:i", strtotime($au['end_date'])
 <p><b><?= htmlspecialchars($statusLong) ?></b></p>
 
 <?php
-// 只有正在进行的拍卖，且当前用户是 buyer 且不是卖家，才显示出价表单
+// Only the auction in progress, 
+// and the current user is a buyer and not a seller, can the bidding form be displayed
 $canBid = $statusKey === 'ongoing'
           && $user
           && $user['role'] === 'buyer'
